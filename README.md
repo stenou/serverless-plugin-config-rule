@@ -22,7 +22,8 @@ functions:
     handler: doSomething.handler
     events:
       - config:
-          ruleName: ElasticBeanstalkPlatformVersion
+          name: ElasticBeanstalkPlatformVersion
+          description: "Checks ElasticBeanstalk Platform Version"
           resourceTypes:
             - "AWS::ElasticBeanstalk::Environment"
 ```

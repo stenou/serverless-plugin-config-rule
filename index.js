@@ -18,20 +18,10 @@ class ServerlessPluginConfigRule {
 
       functionObj.events.forEach((event) => {
         if (event.config) {
-          let ruleName;
+          let RuleName;
+          let Description;
           let resourceTypes;
           if (typeof event.config === 'object') {
-            if (!event.config.ruleName) {
-              const errorMessage = [
-                `Missing "ruleName" property for config event in function ${functionName}.`,
-                ' The correct syntax is an object with "ruleName" property.',
-                ' Please check the docs for more info.',
-              ].join('');
-              throw new this.serverless.classes
-                .Error(errorMessage);
-            }
-            ruleName = event.config.ruleName;
-
             if (!event.config.resourceTypes) {
               const errorMessage = [
                 `Missing "resourceTypes" property for config event in function ${functionName}.`,
@@ -39,7 +29,7 @@ class ServerlessPluginConfigRule {
                 ' Please check the docs for more info.',
               ].join('');
               throw new this.serverless.classes
-                .Error(errorMessage); 
+                .Error(errorMessage);
             }
 
             if (!_.isArray(event.config.resourceTypes)) {
@@ -53,18 +43,28 @@ class ServerlessPluginConfigRule {
               throw new this.serverless.classes
                 .Error(errorMessage);
             }
+            RuleName = event.config.name;
+            Description = event.config.description;
             resourceTypes = event.config.resourceTypes.join('');
+          } else {
+            const errorMessage = [
+              `config event of function "${functionName}" is not an object`,
+              ' Please check the docs for more info.',
+            ].join('');
+            throw new this.serverless.classes
+              .Error(errorMessage);
           }
 
           const lambdaLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
-          const configRuleLogicalId = this.getConfigRuleLogicalId(functionName, event.config.ruleName);
-          const lambdaPermissionlogicalId = this.getLambdaPermissionLogicalId(functionName, event.config.ruleName);
+          const configRuleLogicalId = this.getConfigRuleLogicalId(functionName);
+          const lambdaPermissionlogicalId = this.getLambdaPermissionLogicalId(functionName);
 
           const configTemplate = `
             {
               "Type": "AWS::Config::ConfigRule",
               "Properties": {
-                "ConfigRuleName": "${ruleName}",
+                ${RuleName ? `"ConfigRuleName": "${RuleName}",` : ''}
+                ${Description ? `"Description": "${Description}",` : ''}
                 "Scope": {
                   "ComplianceResourceTypes": [
                     "${resourceTypes}"
@@ -132,18 +132,24 @@ class ServerlessPluginConfigRule {
     }
   }
 
-  getConfigRuleLogicalId(functionName, config) {
-    const normalizedFunctionName = this.provider.naming.getNormalizedFunctionName(functionName);
-    const normalizedConfigName = this.provider.naming.normalizeNameToAlphaNumericOnly(config);
-
-    return `${normalizedFunctionName}ConfigRule${normalizedConfigName}`;
+  getConfigRuleLogicalId(functionName) {
+    return `${this
+      .getNormalizedFunctionName(functionName)}ConfigRule`;
   }
 
-  getLambdaPermissionLogicalId(functionName, config) {
-    const normalizedFunctionName = this.provider.naming.getNormalizedFunctionName(functionName);
-    const normalizedConfigName = this.provider.naming.normalizeNameToAlphaNumericOnly(config);
+  getLambdaPermissionLogicalId(functionName) {
+    return `${this
+      .getNormalizedFunctionName(functionName)}LambdaPermission`;
+  }
 
-    return `${normalizedFunctionName}LambdaPermission${normalizedConfigName}`;
+  getNormalizedFunctionName(functionName) {
+    return this.normalizeName(functionName
+      .replace(/-/g, 'Dash')
+      .replace(/_/g, 'Underscore'));
+  }
+
+  normalizeName(name) {
+    return `${_.upperFirst(name)}`;
   }
 }
 
